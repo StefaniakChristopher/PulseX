@@ -3,6 +3,7 @@ import time
 
 def list_processes():
     processes = []
+    cpu_count = psutil.cpu_count(logical=True)  # number of logical cores
     for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
         try:
             info = proc.info
@@ -16,10 +17,13 @@ def list_processes():
             except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
                 read_mb = write_mb = 0
 
+            raw_cpu = info.get('cpu_percent')
+            normalized_cpu = raw_cpu / cpu_count
+
             processes.append({
                 'pid': info.get('pid'),
                 'name': info.get('name'),
-                'cpu_percent': info.get('cpu_percent'),
+                'cpu_percent': normalized_cpu,
                 'memory_mb': mem,
                 'disk_read_mb': read_mb,
                 'disk_write_mb': write_mb
@@ -28,45 +32,18 @@ def list_processes():
             continue
     return processes
 
-def get_gpu_usage():
-    gpus = []
-    try:
-        import pynvml
-        pynvml.nvmlInit()
-        device_count = pynvml.nvmlDeviceGetCount()
-        for i in range(device_count):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            name = pynvml.nvmlDeviceGetName(handle)
-            utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            gpus.append({
-                'index': i,
-                'name': name.decode('utf-8') if isinstance(name, bytes) else name,
-                'gpu_utilization': utilization.gpu,
-                'memory_utilization': utilization.memory
-            })
-        pynvml.nvmlShutdown()
-    except Exception:
-        pass
-    return gpus 
 
 if __name__ == "__main__":
 
     while True:
+        time.sleep(1)
         start_time = time.perf_counter() 
         procs = list_processes()
         for proc in procs:
             print(f"PID: {proc['pid']}, Name: {proc['name']}, CPU: {proc['cpu_percent']}%, "
                 f"Memory: {proc['memory_mb']:.2f} MB, Disk Read: {proc['disk_read_mb']:.2f} MB, "
-                f"Disk Write: {proc['disk_write_mb']:.2f} MB")
-
-        gpus = get_gpu_usage()
-        if gpus:
-            print("\nGPU Usage:")
-            for gpu in gpus:
-                print(f"GPU {gpu['index']} ({gpu['name']}): {gpu['gpu_utilization']}% GPU, "
-                    f"{gpu['memory_utilization']}% Memory")
-        else:
-            print("\nNo GPU usage data available or NVIDIA GPU not detected.")
+                f"Disk Write: {proc['disk_write_mb']:.2f} MB"
+            )
 
         elapsed_time = time.perf_counter() - start_time
 
