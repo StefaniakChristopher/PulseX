@@ -1,5 +1,35 @@
 import psutil
 import time
+import win32api
+
+def get_exe_info(exe_path):
+    """Retrieve version info from an executable."""
+    try:
+        info = win32api.GetFileVersionInfo(exe_path, "\\")
+        # Read the language and codepage
+        lang, codepage = win32api.GetFileVersionInfo(exe_path, "\\VarFileInfo\\Translation")[0]
+        str_info = {}
+        for key in ("FileDescription", "ProductName"):
+            str_key = "\\StringFileInfo\\%04X%04X\\%s" % (lang, codepage, key)
+            str_info[key] = win32api.GetFileVersionInfo(exe_path, str_key)
+        return str_info
+    except Exception:
+        return {}
+
+
+def get_friendly_name(proc):
+    """Return the friendly name for a process, using version info if available."""
+    try:
+        exe_path = proc.exe()  # Get the process executable path
+        info = get_exe_info(exe_path)
+        # Prefer FileDescription, then ProductName; otherwise fallback to process name.
+        if info.get("FileDescription"):
+            return info["FileDescription"]
+        elif info.get("ProductName"):
+            return info["ProductName"]
+    except Exception:
+        pass
+    return proc.name()
 
 def list_processes():
     processes = []
@@ -20,9 +50,11 @@ def list_processes():
             raw_cpu = info.get('cpu_percent')
             normalized_cpu = raw_cpu / cpu_count
 
+            friendly_name = get_friendly_name(proc)
+
             processes.append({
                 'pid': info.get('pid'),
-                'name': info.get('name'),
+                'name': friendly_name,
                 'cpu_percent': normalized_cpu,
                 'memory_mb': mem,
                 'disk_read_mb': read_mb,
