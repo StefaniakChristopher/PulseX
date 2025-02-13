@@ -135,9 +135,9 @@ class GraphWidget(QWidget):
     def __init__(self, data, parent=None):
         super().__init__(parent)
         self.data = data
-        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setStyleSheet("background:transparent;")
+        #self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        #self.setAttribute(Qt.WA_TranslucentBackground)
+        #self.setStyleSheet("background:transparent;")
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QtGui.QPainter(self)
@@ -176,7 +176,7 @@ class GraphWidgetsContainer(QWidget):
         # Layout
         stacked_layout = QtWidgets.QStackedLayout(self)
         self.setLayout(stacked_layout)
-        stacked_layout.setStackingMode(stacked_layout.StackAll)
+        stacked_layout.setStackingMode(stacked_layout.StackingMode.StackAll)
 
         for p in processes:
             self.graph_widget = GraphWidget(p)
@@ -221,34 +221,60 @@ class MainWindow(QWidget):
     #for glow effect
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # Grab the pixmap of the graph widget
-        pixmap = self.graph_widget.grab()
-        # Display the pixmap in the label
-        self.label.setPixmap(pixmap)
+        self.graph_widget = GraphWidgetsContainer(self.data)
+        self.blured_label = QLabel()
+        self.blured_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.blured_label.setGraphicsEffect(self.blur_effect)
 
-    def __init__(self):
+        self.graph_widget.setGeometry(self.rect())
+
+        # Grab the pixmap of the graph widget
+        pixmap_original = self.graph_widget.grab()
+        # Display the pixmap in the label
+        self.blured_label.setPixmap(pixmap_original)
+        #self.original_label.setPixmap(pixmap_original)
+
+        
+
+        # Create the widget and layout to combine the graphs with the blured label
+        self.combined = QtWidgets.QWidget()
+
+        
+        self.combined.setGeometry(self.rect())
+        combined_layout = QtWidgets.QStackedLayout()
+        combined_layout.addWidget(self.blured_label)
+        combined_layout.addWidget(self.graph_widget)
+        combined_layout.setStackingMode(combined_layout.StackingMode.StackAll)
+        self.combined.setLayout(combined_layout)
+
+        # Grab the pixmap of the combined widget
+        pixmap_combined = self.combined.grab()
+        self.combined_label.setPixmap(pixmap_combined)
+
+    def __init__(self, data):
         super().__init__()
+        self.data = data
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         self.setWindowTitle("Pulse X")
 
         self.blur_effect = QGraphicsBlurEffect()
         self.blur_effect.setBlurRadius(10)  # Adjust the blur radius
         
-        self.graph_widget = GraphWidget()
         self.grid_widget = ScrollingBackground(self)
 
-        self.label = QLabel()
-        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-
-        self.label.setGraphicsEffect(self.blur_effect)
+        self.combined_label = QLabel()
+        self.combined_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.combined_label.setGraphicsEffect(self.blur_effect)
 
         # Layout
         stacked_layout = QtWidgets.QStackedLayout(self)
         self.setLayout(stacked_layout)
-        stacked_layout.setStackingMode(stacked_layout.StackAll)
+        stacked_layout.setStackingMode(stacked_layout.StackingMode.StackAll)
+        
         stacked_layout.addWidget(self.grid_widget)
-        stacked_layout.addWidget(self.graph_widget)
-        stacked_layout.addWidget(self.label)
+        #stacked_layout.addWidget(self.graph_widget)
+        #stacked_layout.addWidget(self.blured_label)
+        stacked_layout.addWidget(self.combined_label)
 
         self.setLayout(stacked_layout)
 
@@ -277,8 +303,8 @@ if __name__ == "__main__":
 
 
     app = QtWidgets.QApplication([])
-    #widget = MainWindow()#(data_array)
-    widget = GraphWidgetsContainer(proccess_array)
+    widget = MainWindow(proccess_array)#(data_array)
+    #widget = GraphWidgetsContainer(proccess_array)
     widget.resize(1024, 600)
     widget.show()
 
