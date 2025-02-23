@@ -1,8 +1,9 @@
 import sys
-import asyncio
 import random
+import usage
+from collections import deque
 
-from PySide6 import QtCore, QtWidgets, QtGui # type: ignore
+from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMainWindow, QSizePolicy, QGraphicsBlurEffect # type: ignore
 from PySide6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor, QPen, QLinearGradient # type: ignore
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis # type: ignore
@@ -10,20 +11,37 @@ from PySide6.QtCore import QPointF, Qt, QTimer # type: ignore
 from PySide6.QtGui import QFontDatabase, QFont
 #from PySide6.QtWidgets import  # type: ignore
 
+play = True
+
 class MainWidget(QtWidgets.QWidget):
-    def __init__(self, data):
+    def update_data(self):
+        global play
+        #print(play)
+        if play == True:
+            self.graph_section.graph.update_data()
+            self.process_section.update_data()
+            self.graph_section.graph.grid_widget.update_counter()
+
+
+    def __init__(self):
         super().__init__()
+        self.data_timer = QtCore.QTimer()
+        self.data_timer.setInterval(2000)
+        self.data_timer.timeout.connect(self.update_data)
+        self.data_timer.start()
+
+
         self.setWindowTitle("Pulse X")
 
         #Instantiate Widgets
-        process_section = ProcessSection()
-        graph_section = GraphSection(data)
+        self.process_section = ProcessSection()
+        self.graph_section = GraphSection()
 
         #Layout
         layout = QtWidgets.QHBoxLayout(self)
         #layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(process_section)
-        layout.addWidget(graph_section)
+        layout.addWidget(self.process_section)
+        layout.addWidget(self.graph_section)
 
 
 class Title(QtWidgets.QWidget):
@@ -53,32 +71,39 @@ class Title(QtWidgets.QWidget):
 
 
 class ProcessSection(QtWidgets.QWidget):
+    def update_data(self):
+
+        processes_deque.append(usage.list_processes())
+        self.processList.deleteLater()
+        self.processList = ProcessList(processes_deque, 59)
+        self.layout.addWidget(self.processList)
+
     def __init__(self):
         super().__init__()
 
         self.setStyleSheet("border: 5px outset #191919;")
         self.setFixedWidth(300)
 
-        title = Title("CPU")
-        processList = ProcessList()
+        title = Title("Ram")
+        self.processList = ProcessList(processes_deque, 59)
 
         #Layout
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(title)
-        layout.addWidget(processList)
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.addWidget(title)
+        self.layout.addWidget(self.processList)
 
 
 class GraphSection(QtWidgets.QWidget):
-    def __init__(self, data):
+    def __init__(self):
         super().__init__()
         media_controls = PlayControls()
-        graph = CompleteGraphWidget(data)
+        self.graph = CompleteGraphWidget()
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0,0,0,0)
         layout.addWidget(media_controls)
-        layout.addWidget(graph)
+        layout.addWidget(self.graph)
 
 
 class PlayControls(QtWidgets.QWidget):
@@ -107,10 +132,14 @@ class PlayControls(QtWidgets.QWidget):
             self.button.setIcon(self.play_icon)
         else:
             self.button.setIcon(self.pause_icon)
+         
+        global play
+        play = not self.is_playing
+        print(play)
 
 
 class ProcessList(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, data, time_index):
         super().__init__()
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -161,8 +190,8 @@ class ProcessList(QtWidgets.QWidget):
         self.container_layout = QtWidgets.QVBoxLayout(self.container_widget)
         
         # Add process containers to the container widget
-        for i in range(10):
-            self.process_item = ProcessItem("process " + str(i))
+        for process in data[time_index]:
+            self.process_item = ProcessItem(process["name"], get_color_by_pid(int(process["pid"])))
             self.container_layout.addWidget(self.process_item,alignment=QtCore.Qt.AlignTop)
 
         # Set the container widget as the scroll area's widget
@@ -189,11 +218,29 @@ def random_color():
     return random.choice(colors)
 
 
+def get_color_by_pid(pid):
+    colors = [
+    "#fffd77",
+    "#ffa06e",
+    "#ff4365",
+    "#235789",
+    "#1298a5",
+    "#00d9c0",
+    "#27c28c",
+    "#4daa57"
+]
+    #r = random.randint(0, 255)
+    #g = random.randint(0, 255)
+    #b = random.randint(0, 255)
+    #return f'#{r:02x}{g:02x}{b:02x}'
+    return colors[pid%len(colors)]
+
+
 class ProcessItem(QtWidgets.QWidget):
-    def __init__(self, processName):
+    def __init__(self, processName, color):
         super().__init__()
 
-        color = random_color()
+        #color = random_color()
         
         #self.setStyleSheet("background-color: #69C4E8;")
         #self.setFixedSize(256, 50)
@@ -243,9 +290,28 @@ class ProcessItem(QtWidgets.QWidget):
 
 
 class GraphWidget(QWidget):
-    def __init__(self, data, parent=None):
+    def __init__(self, data, process_index, parent=None):
         super().__init__(parent)
         self.data = data
+        self.process_data = []
+        self.pid = 0
+
+        for time_index in range(60):
+            if (len(data[time_index]) > process_index):
+                #print(len(data[time_index]), " ", process_index)
+                self.process_data.append(data[time_index][process_index])
+                self.pid = int(data[time_index][process_index]["pid"]) #this is not bad
+            
+            else:
+                self.process_data.append({'pid': -1,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            })
+
+        #print(data)
         
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -254,31 +320,26 @@ class GraphWidget(QWidget):
 
         rect = self.rect()
         margin = 20
-
-        #gradient = QLinearGradient(0, 0, rect.width(), rect.height())
-        #gradient.setColorAt(0.0, random_color())
-        #gradient.setColorAt(1.0, random_color())
-        pen = QPen(QColor(random_color()), 2)
-        #pen.setBrush(gradient)
+        pen = QPen(QColor(get_color_by_pid(self.pid)), 2)
         painter.setPen(pen)
         
-        max_value = max(self.data)
+        max_value = 100.0#max(self.data)
         scale_x = (rect.width() - 2 * margin) / (len(self.data) - 1)
         scale_y = (rect.height() - 2 * margin) / max_value
 
-        for i in range(len(self.data) - 1):
+        for i in range(len(self.process_data ) - 1):
             x1 = margin + i * scale_x
-            y1 = rect.height() - margin - self.data[i] * scale_y
+            y1 = rect.height() - margin - self.process_data[i]["memory_mb"] * scale_y
             x2 = margin + (i + 1) * scale_x
-            y2 = rect.height() - margin - self.data[i + 1] * scale_y
+            y2 = rect.height() - margin - self.process_data[i + 1]["memory_mb"] * scale_y
             painter.drawLine(x1, y1, x2, y2)
+            #memory_mb
+            #cpu_percent
 
 
 class GraphWidgetsContainer(QWidget):
-        #processes[]
-            #time[]
-                #dictionary{}
-    def __init__(self, processes = [[]], parent=None):
+        #processes[ [ { mem_mb } ] ]
+    def __init__(self, processes, parent=None):
         super().__init__(parent)
         # Layout
         self.p = processes
@@ -303,42 +364,41 @@ class GraphWidgetsContainer(QWidget):
         self.add_widget_timer.setInterval(1000/60)
         self.add_widget_timer.timeout.connect(self.add)
         self.add_widget_timer.start()
+        #print("-----------------------------------------------------------------------------------------------------")
+        
 
     
     def add(self):
+        #print(self.p[59])
+            
         self.temp_widget.setGeometry(self.rect())
         #for p in processes:
         #print(self.i)
-        renders_per_pass = 5
-        for offset in range(renders_per_pass):
-            self.graph_widget = GraphWidget(self.p[self.i + offset])
+        #how many graphs do we render at once
+        #renders_per_pass = 5
+        #for offset in range(renders_per_pass):
+        #    self.graph_widget = GraphWidget(self.p[self.i + offset])
+        #    self.graph_widget.setGeometry(self.rect())
+        #    self.stacked_layout.addWidget(self.graph_widget)
+        for process_index in range(100):
+            self.graph_widget = GraphWidget(self.p, process_index)
             self.graph_widget.setGeometry(self.rect())
             self.stacked_layout.addWidget(self.graph_widget)
         
         self.pix_map = self.temp_widget.grab()
-        #self.graph_label.setPixmap(self.pix_map)
-        #self.graph_layout.addWidget(self.graph_label)
 
-        #self.blur_label.setPixmap(self.pix_map)
-        #self.graph_layout.addWidget(self.blur_label)
-        
-        #painter = QtGui.QPainter(self)
-        #painter.setCompositionMode(QtGui.QPainter.CompositionMode_Screen)
-        #painter.drawPixmap(0, 0, self.blur_pixmap)
-        #painter.end()
-
-        self.i += renders_per_pass
-        if self.i > len(self.p) - 1:
-            self.add_widget_timer.stop()
-            self.blur_effect = QGraphicsBlurEffect()
-            self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
-            self.blur_label = QLabel()
-            self.blur_label.setGeometry(self.rect())
-            self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-            self.blur_label.setPixmap(self.pix_map)
-            self.blur_label.setGraphicsEffect(self.blur_effect)
-            self.blur_pixmap = self.blur_label.grab()
-            self.glow = True
+        #self.i += renders_per_pass
+        #if self.i > len(self.p) - 1:
+        self.add_widget_timer.stop()
+        self.blur_effect = QGraphicsBlurEffect()
+        self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
+        self.blur_label = QLabel()
+        self.blur_label.setGeometry(self.rect())
+        self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.blur_label.setPixmap(self.pix_map)
+        self.blur_label.setGraphicsEffect(self.blur_effect)
+        self.blur_pixmap = self.blur_label.grab()
+        self.glow = True
         
         
     def paintEvent(self, event):
@@ -360,17 +420,17 @@ class GraphWidgetsContainer(QWidget):
 
 class ScrollingGrid(QWidget):
     def update_counter(self):
-        self.counter += 1
+        self.counter += self.rect().width() / 60 #1
         self.update() 
 
     def __init__(self, parent=None):
         super().__init__(parent)
         #self.setMask(pixmap.mask())
         #for testing
-        self.counter = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_counter)
-        self.timer.start(16.67)  # 60fps 
+        self.counter = 0.0
+        #self.timer = QTimer()
+        #self.timer.timeout.connect(self.update_counter)
+        #self.timer.start(16.67)  # 60fps 
         
 
     def paintEvent(self, event):
@@ -393,32 +453,29 @@ class ScrollingGrid(QWidget):
 
 
 class CompleteGraphWidget(QWidget):
-    
+    def update_data(self):
+        processes_deque.append(usage.list_processes())
+        self.graph_widget.deleteLater()
+        self.graph_widget = GraphWidgetsContainer(processes_deque)
+        self.stacked_layout.addWidget(self.graph_widget)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.graph_widget.deleteLater()
 
         # Create widgets
-        self.graph_widget = GraphWidgetsContainer(self.data)
+        self.graph_widget = GraphWidgetsContainer(processes_deque)
         self.stacked_layout.addWidget(self.graph_widget)
-    
-    #def paintEvent(self, event):
-        # Draw the pixmap on the widget
-        #painter = QtGui.QPainter(self)
-        #painter.setCompositionMode(QtGui.QPainter.CompositionMode_Screen)
-        #painter.drawPixmap(0, 0, self.pixmap)
 
-    def __init__(self, data):
+
+    def __init__(self):
         super().__init__()
-        #self.resize_timer = QtCore.QTimer()
-        #self.resize_timer.setInterval(500)  # Update every 500 milliseconds (.5 second)
-        #self.resize_timer.timeout.connect(self.delayed_resize_event)
 
-        self.data = data
+        #self.data = data
         #create Widgets
         self.b_widget = QtWidgets.QWidget()
         self.b_widget.setStyleSheet("border: 5px groove #191919;")
-        self.graph_widget = GraphWidgetsContainer(self.data)
+        self.graph_widget = GraphWidgetsContainer(processes_deque)
         self.grid_widget = ScrollingGrid()
         self.time_line_scrubber = TimeLineScrubber()
         
@@ -537,44 +594,77 @@ class MouseDetector(QtWidgets.QWidget):
         super().leaveEvent(event)
 
 
+# Create a deque with a fixed size
+max_size = 60
+processes_deque = deque([[ {'pid': -1,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            }, {'pid': -2,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            } ] for _ in range(max_size)], maxlen=max_size)
+
+#processed_data = []
+
+def refactor_data(data):
+    process_array = []
+    refactored_data = []
+
+    time_index = 0
+    for process_index in range(len(data[time_index])):
+        for i in range(60):
+            process_array.append(data[i][process_index])
+        
+        print(time_index)
+        time_index += 1
+
+        
+
+        refactored_data.append(process_array[:])
+        process_array = []
+    
+    return refactored_data
+
 if __name__ == "__main__":
     #test data
-    data_array = [
-    0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
-    10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
-    20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0,
-    30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0,
-    40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0, 47.0, 48.0, 49.0,
-    50.0, 51.0, 52.0, 53.0, 54.0, 55.0, 56.0, 57.0, 58.0, 59.0,
-    60.0, 61.0, 62.0, 63.0, 64.0, 65.0, 66.0, 67.0, 68.0, 69.0,
-    70.0, 71.0, 72.0, 73.0, 74.0, 75.0, 76.0, 77.0, 78.0, 79.0,
-    80.0, 81.0, 82.0, 83.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0,
-    90.0, 91.0, 92.0, 93.0, 94.0, 95.0, 96.0, 97.0, 98.0, 99.0, 100.0
-    ]
+    #print(usage.list_processes())
 
-    proccess_array = []
+    #data_array = [
+   # 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+    #10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
+    #20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0,
+    #30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0,
+    #40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0, 47.0, 48.0, 49.0,
+    #50.0, 51.0, 52.0, 53.0, 54.0, 55.0, 56.0, 57.0, 58.0, 59.0,
+    #60.0, 61.0, 62.0, 63.0, 64.0, 65.0, 66.0, 67.0, 68.0, 69.0,
+    #70.0, 71.0, 72.0, 73.0, 74.0, 75.0, 76.0, 77.0, 78.0, 79.0,
+    #80.0, 81.0, 82.0, 83.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0,
+    #90.0, 91.0, 92.0, 93.0, 94.0, 95.0, 96.0, 97.0, 98.0, 99.0, 100.0
+    #]
 
-    for i in range(10):
-        random.shuffle(data_array)
-        proccess_array.append(data_array[:]) #shallow copy
+   # proccess_array = []
 
-    app = QtWidgets.QApplication([])
-    
-    #font.setBold(True)
-    #font.setHintingPreference(QFont.PreferAntialias)  # Enable antialiasing
-    
+   # for i in range(10):
+    #    random.shuffle(data_array)
+    #    proccess_array.append(data_array[:]) #shallow copy
+
+    app = QtWidgets.QApplication([])    
     #widget = CompleteGraphWidget(proccess_array)#(data_array)
     #widget = GraphWidgetsContainer(proccess_array)
     #widget = PlayControls()
     #widget = GraphSection(proccess_array)
-    widget = MainWidget(proccess_array)
+    widget = MainWidget()
     #widget = ScrollingGrid()
     #widget = TimeLineScrubber()
     #widget = TimeScrubber()
     #widget = MouseDetector()
     widget.resize(1024, 600)
     widget.show()
-
-    #loop.run_until_complete(app.exec())
     sys.exit(app.exec())
     
