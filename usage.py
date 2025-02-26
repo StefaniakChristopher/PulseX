@@ -32,10 +32,15 @@ def get_friendly_name(proc):
     return proc.name()
 
 def list_processes():
+    seen = set()
     processes = []
     cpu_count = psutil.cpu_count(logical=True)  # number of logical cores
     for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
         try:
+            friendly_name = get_friendly_name(proc)
+            if friendly_name in seen:
+                continue
+            
             info = proc.info
             mem = info.get('memory_info').rss / (1024 * 1024) if info.get('memory_info') else 0
 
@@ -50,7 +55,7 @@ def list_processes():
             raw_cpu = info.get('cpu_percent')
             normalized_cpu = raw_cpu / cpu_count
 
-            friendly_name = get_friendly_name(proc)
+            
 
             processes.append({
                 'pid': info.get('pid'),
@@ -60,6 +65,8 @@ def list_processes():
                 'disk_read_mb': read_mb,
                 'disk_write_mb': write_mb
             })
+
+            seen.add(friendly_name)
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return processes

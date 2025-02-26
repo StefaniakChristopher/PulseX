@@ -1,26 +1,27 @@
-import sys
-from PySide6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QGraphicsBlurEffect
-from PySide6.QtGui import QFont
+from collections import deque
+import time
+from usage import list_processes
 
-app = QApplication(sys.argv)
 
-window = QWidget()
-layout = QVBoxLayout()
+max_size = 60
+processes_deque = deque([[ {'pid': -1,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            }, {'pid': -2,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            } ] for _ in range(max_size)], maxlen=max_size)
 
-label = QLabel("This text is blurred")
-font = QFont()
-font.setPointSize(20)
-label.setFont(font)
 
-# Create a blur effect
-blur_effect = QGraphicsBlurEffect()
-blur_effect.setBlurRadius(1)  # Set the blur radius
+while True:
+    time.sleep(2)
+    processes_deque.append(list_processes())
 
-# Apply the blur effect to the label
-label.setGraphicsEffect(blur_effect)
+    print(processes_deque)
 
-layout.addWidget(label)
-window.setLayout(layout)
-
-window.show()
-sys.exit(app.exec())
