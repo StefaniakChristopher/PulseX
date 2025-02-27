@@ -101,7 +101,7 @@ class ProcessSection(QtWidgets.QWidget):
         self.setStyleSheet("background-color: #1E1E1E; border: 5px outset #191919;")
         self.setFixedWidth(300)
 
-        title = Title("Ram")
+        title = Title("RAM")
         title.setStyleSheet("color: white;")
         self.processList = ProcessList(all_processes)
 
@@ -351,26 +351,26 @@ class PlayControls(QtWidgets.QWidget):
 class CompleteGraphWidget(QWidget):
     def update_data(self):
         self.graph_widget.deleteLater()
-        self.graph_widget = GraphWidgetsContainer(processes_deque)
+        self.graph_widget = GraphWidgetsContainer(processes_deque, self)
         self.stacked_layout.addWidget(self.graph_widget)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.graph_widget.deleteLater()
-        self.setStyleSheet("background-color: transparent;")
 
         # Create widgets
-        self.graph_widget = GraphWidgetsContainer(processes_deque)
+        self.graph_widget = GraphWidgetsContainer(processes_deque, self)
         self.stacked_layout.addWidget(self.graph_widget)
 
 
     def __init__(self):
         super().__init__()
+        self.setStyleSheet("background-color: transparent;")
 
         #create Widgets
         self.b_widget = QtWidgets.QWidget()
         self.b_widget.setStyleSheet("border: 5px groove #191919;")
-        self.graph_widget = GraphWidgetsContainer(processes_deque)
+        self.graph_widget = GraphWidgetsContainer(processes_deque, self)
         self.grid_widget = ScrollingGrid()
         # self.time_line_scrubber = TimeLineScrubber()
 
@@ -390,7 +390,9 @@ class GraphWidgetsContainer(QWidget):
         #processes[ [ { mem_mb } ] ]
     def __init__(self, processes, parent=None):
         super().__init__(parent)
-        
+        self.resize(parent.size())
+        #print(parent.size())
+        #print("SIZE1: ",self.size())
         self.p = processes
         self.i = 0
         self.glow = False
@@ -408,22 +410,25 @@ class GraphWidgetsContainer(QWidget):
         self.add_widget_timer = QtCore.QTimer()
         self.add_widget_timer.setInterval(1000/60)
         self.add_widget_timer.timeout.connect(self.add)
+        self.add()
         self.add_widget_timer.start()
         #print("-----------------------------------------------------------------------------------------------------")
 
     
     def add(self):  
-        self.temp_widget.setGeometry(self.rect())
+        #self.temp_widget.setGeometry(self.rect())
+        self.temp_widget.resize(self.size())
+        #print("SIZE2: ",self.size())
         
         for process_index in range(5):
             self.graph_widget = GraphWidget(self.p, process_index + self.i)
-            self.graph_widget.setGeometry(self.rect())
+            self.graph_widget.resize(self.size())
             self.stacked_layout.addWidget(self.graph_widget)
         
         self.i += 4
         self.pix_map = self.temp_widget.grab()
         
-        self.update()
+        
         if self.i >= len(processes_deque):
             self.add_widget_timer.stop()
 
@@ -431,13 +436,13 @@ class GraphWidgetsContainer(QWidget):
             self.blur_effect = QGraphicsBlurEffect()
             self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
             self.blur_label = QLabel()
-            self.blur_label.setGeometry(self.rect())
+            self.blur_label.resize(self.size())
             self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
             self.blur_label.setPixmap(self.pix_map)
             self.blur_label.setGraphicsEffect(self.blur_effect)
             self.blur_pixmap = self.blur_label.grab()
             self.glow = True
-        
+        self.update()
         
     def paintEvent(self, event):
         painter1 = QtGui.QPainter(self)
@@ -507,13 +512,12 @@ class GraphWidget(QWidget):
 class ScrollingGrid(QWidget):
     def update_counter(self):
         self.counter += self.rect().width() / 60 #1
-        self.update() 
+        #self.update() 
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        #self.setMask(pixmap.mask())
-        #for testing
         self.counter = 0.0
+        #for testing
         #self.timer = QTimer()
         #self.timer.timeout.connect(self.update_counter)
         #self.timer.start(16.67)  # 60fps 
