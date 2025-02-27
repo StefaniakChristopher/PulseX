@@ -5,6 +5,7 @@ import usage
 import signal
 import concurrent.futures
 from collections import deque
+from discover import list_processes
 
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMainWindow, QSizePolicy, QGraphicsBlurEffect # type: ignore
@@ -28,10 +29,6 @@ def random_color():
     "#27c28c",
     "#4daa57"
 ]
-    #r = random.randint(0, 255)
-    #g = random.randint(0, 255)
-    #b = random.randint(0, 255)
-    #return f'#{r:02x}{g:02x}{b:02x}'
     return random.choice(colors)
 
 
@@ -46,33 +43,13 @@ def get_color_by_pid(pid):
     "#27c28c",
     "#4daa57"
 ]
-    #r = random.randint(0, 255)
-    #g = random.randint(0, 255)
-    #b = random.randint(0, 255)
-    #return f'#{r:02x}{g:02x}{b:02x}'
     return colors[pid%len(colors)]
 
 class MainWidget(QtWidgets.QWidget):
     def update_data(self):
         global play
-        #print(play)
         if play == True:
-            #processes_deque.append(usage.list_processes())
-
-            #with concurrent.futures.ThreadPoolExecutor() as executor:
-                # Submit the function to the executor
-             #   future = executor.submit(usage.list_processes)
-
-                # Get the return value from the thread
-            #    result = future.result()
-
-                #for i in result:
-                    #print(i["name"])
-             #   processes_deque.append(result)
-
-
             self.graph_section.graph.update_data()
-            self.process_section.update_data()
             self.graph_section.graph.grid_widget.update_counter()
     
     def closeEvent(self, event):
@@ -99,7 +76,6 @@ class MainWidget(QtWidgets.QWidget):
 
         #Layout
         layout = QtWidgets.QHBoxLayout(self)
-        #layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.process_section)
         layout.addWidget(self.graph_section)
 
@@ -107,10 +83,12 @@ class MainWidget(QtWidgets.QWidget):
 #                                   PROCESS SECTION
 #---------------------------------------------------------------------------------------------------
 
+all_processes = list_processes()
+
 class ProcessSection(QtWidgets.QWidget):
     def update_data(self):
         self.processList.deleteLater()
-        self.processList = ProcessList(processes_deque, 59)
+        self.processList = ProcessList(all_processes)
         self.layout.addWidget(self.processList)
 
     def __init__(self):
@@ -120,7 +98,7 @@ class ProcessSection(QtWidgets.QWidget):
         self.setFixedWidth(300)
 
         title = Title("Ram")
-        self.processList = ProcessList(processes_deque, 59)
+        self.processList = ProcessList(all_processes)
 
         #Layout
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -155,15 +133,15 @@ class Title(QtWidgets.QWidget):
         layout.addWidget(text)
 
 class ProcessList(QtWidgets.QWidget):
-    def __init__(self, data, time_index):
+    def __init__(self, data):
         super().__init__()
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.data = data
+        
         self.process_index = 0
-        self.processes = self.data[time_index]
+        self.processes = data
 
         # Create a QScrollArea
         self.scroll_area = QtWidgets.QScrollArea()
@@ -227,10 +205,13 @@ class ProcessList(QtWidgets.QWidget):
         self.data_timer.start()
 
     def add(self):
+        print(self.processes)
+        print(self.processes[0])
         process = self.processes[self.process_index]
-
         self.process_item = ProcessItem(process["name"], get_color_by_pid(int(process["pid"])))
+        print('dog')
         self.container_layout.addWidget(self.process_item,alignment=QtCore.Qt.AlignTop)
+        print('cat')
         self.process_index += 1
 
         if self.process_index >= len(self.processes):
@@ -326,7 +307,7 @@ class PlayControls(QtWidgets.QWidget):
 
 
     def on_button_clicked(self):
-        # This function will be executed when the button is clicked
+        # This function will be executed when the button is clicked and set it to play or pause
         self.is_playing = not self.is_playing
         if self.is_playing:
             self.button.setIcon(self.play_icon)
@@ -361,14 +342,14 @@ class CompleteGraphWidget(QWidget):
         self.b_widget.setStyleSheet("border: 5px groove #191919;")
         self.graph_widget = GraphWidgetsContainer(processes_deque)
         self.grid_widget = ScrollingGrid()
-        self.time_line_scrubber = TimeLineScrubber()
+        # self.time_line_scrubber = TimeLineScrubber()
 
         # Layout
         self.stacked_layout = QtWidgets.QStackedLayout(self)
         self.setLayout(self.stacked_layout)
         self.stacked_layout.setStackingMode(self.stacked_layout.StackingMode.StackAll)
         #Note: graphs_widgets_container is added on resize event
-        self.stacked_layout.addWidget(self.time_line_scrubber)
+        # self.stacked_layout.addWidget(self.time_line_scrubber)
         self.stacked_layout.addWidget(self.b_widget)
         self.stacked_layout.addWidget(self.grid_widget)
 
@@ -409,14 +390,7 @@ class GraphWidgetsContainer(QWidget):
         #print(self.p[59])
             
         self.temp_widget.setGeometry(self.rect())
-        #for p in processes:
-        #print(self.i)
-        #how many graphs do we render at once
-        #renders_per_pass = 5
-        #for offset in range(renders_per_pass):
-        #    self.graph_widget = GraphWidget(self.p[self.i + offset])
-        #    self.graph_widget.setGeometry(self.rect())
-        #    self.stacked_layout.addWidget(self.graph_widget)
+        
         for process_index in range(50):
             #print(process_index)
             self.graph_widget = GraphWidget(self.p, process_index + self.i)
@@ -545,52 +519,52 @@ class ScrollingGrid(QWidget):
             painter.drawLine(margin, y, rect.width() - margin, y)
 
 
-class TimeLineScrubber(QtWidgets.QWidget):
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        #Math Stuff for keeping the TimeScrubber in the correct position when resizing window 🤓
-        ratio = (self.selected_time / self.old_width)
-        self.selected_time = round(event.size().width() * ratio)
-        self.time_scrubber.move(self.selected_time,0 )
-        self.old_width = event.size().width()
+# class TimeLineScrubber(QtWidgets.QWidget):
+#     def resizeEvent(self, event):
+#         super().resizeEvent(event)
+#         #Math Stuff for keeping the TimeScrubber in the correct position when resizing window 🤓
+#         ratio = (self.selected_time / self.old_width)
+#         self.selected_time = round(event.size().width() * ratio)
+#         self.time_scrubber.move(self.selected_time,0 )
+#         self.old_width = event.size().width()
 
-    def __init__(self):
-        super().__init__()
-        self.selected_time = 1
-        self.old_width = self.width()
-        self.is_clicked = False
+#     def __init__(self):
+#         super().__init__()
+#         self.selected_time = 1
+#         self.old_width = self.width()
+#         self.is_clicked = False
 
-        #Create Widget
-        self.time_scrubber = TimeScrubber()#QtWidgets.QPushButton(" ")
-        self.time_scrubber.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))
-        self.time_scrubber.setFixedWidth(4)
+#         #Create Widget
+#         self.time_scrubber = TimeScrubber()#QtWidgets.QPushButton(" ")
+#         self.time_scrubber.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))
+#         self.time_scrubber.setFixedWidth(4)
 
-        #Layout
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.time_scrubber)
-        self.setLayout(layout)
+#         #Layout
+#         layout = QtWidgets.QHBoxLayout(self)
+#         layout.setContentsMargins(0, 0, 0, 0)
+#         layout.addWidget(self.time_scrubber)
+#         self.setLayout(layout)
 
-    def mouseMoveEvent(self, event):
-        if self.time_scrubber.mouse_detector.is_mouse_over and self.is_clicked:
-            #print()
-            pos = event.position()
-            if pos.x() < self.width() and pos.x() > 0:
-                self.selected_time = round(pos.x()) - 2
-                #print(self.selected_time)
-                self.time_scrubber.move(self.selected_time,0 )
+#     def mouseMoveEvent(self, event):
+#         if self.time_scrubber.mouse_detector.is_mouse_over and self.is_clicked:
+#             #print()
+#             pos = event.position()
+#             if pos.x() < self.width() and pos.x() > 0:
+#                 self.selected_time = round(pos.x()) - 2
+#                 #print(self.selected_time)
+#                 self.time_scrubber.move(self.selected_time,0 )
 
     
-    def mouseReleaseEvent(self, event):
-        super().mouseReleaseEvent(event)
-        self.is_clicked = False
-        self.time_scrubber.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))
-        #self.test()
+#     def mouseReleaseEvent(self, event):
+#         super().mouseReleaseEvent(event)
+#         self.is_clicked = False
+#         self.time_scrubber.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))
+#         #self.test()
     
-    def mousePressEvent(self, event):
-        super().mousePressEvent(event)
-        self.is_clicked = True
-        self.time_scrubber.setCursor(QtGui.QCursor(QtCore.Qt.ClosedHandCursor))
+#     def mousePressEvent(self, event):
+#         super().mousePressEvent(event)
+#         self.is_clicked = True
+#         self.time_scrubber.setCursor(QtGui.QCursor(QtCore.Qt.ClosedHandCursor))
         #self.test()
     
     #def time_scrubber_released(self):
@@ -602,15 +576,15 @@ class TimeLineScrubber(QtWidgets.QWidget):
         #print(self.is_clicked)
 
 
-class TimeScrubber(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
-        self.mouse_detector = MouseDetector()
+# class TimeScrubber(QtWidgets.QWidget):
+#     def __init__(self):
+#         super().__init__()
+#         self.mouse_detector = MouseDetector()
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.mouse_detector)
-        self.setLayout(layout)
+#         layout = QVBoxLayout()
+#         layout.setContentsMargins(0, 0, 0, 0)
+#         layout.addWidget(self.mouse_detector)
+#         self.setLayout(layout)
 
 
 class MouseDetector(QtWidgets.QWidget):
@@ -652,6 +626,8 @@ processes_deque = deque([[ {'pid': -1,
                 'disk_write_mb': 0.0
             } ] for _ in range(max_size)], maxlen=max_size)
 
+
+
 #processed_data = []
 
 def refactor_data(data):
@@ -692,27 +668,9 @@ if __name__ == "__main__":
     
     with concurrent.futures.ThreadPoolExecutor() as executor:
             #Submit the function to the executor
-            future = executor.submit(data_thread),
+            future = executor.submit(data_thread)
             executor.submit(gui_thread)
 
 
             future.result()
-    #print("Main thread exiting, waiting for threads to finish...")
-    #for future in futures:
-    #    future.result()
-    #print("All threads stopped.")
-
-    #app = QtWidgets.QApplication([])    
-    #widget = CompleteGraphWidget(proccess_array)#(data_array)
-    #widget = GraphWidgetsContainer(proccess_array)
-    #widget = PlayControls()
-    #widget = GraphSection(proccess_array)
-    #widget = MainWidget()
-    #widget = ScrollingGrid()
-    #widget = TimeLineScrubber()
-    #widget = TimeScrubber()
-    #widget = MouseDetector()
-    #widget.resize(1024, 600)
-    #widget.show()
-    #sys.exit(app.exec())
-    
+   
