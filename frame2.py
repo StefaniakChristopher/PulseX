@@ -62,6 +62,8 @@ class MainWidget(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
+
+        self.setStyleSheet("background-color: #1E1E1E;")
         self.data_timer = QtCore.QTimer()
         self.data_timer.setInterval(2000)
         self.data_timer.timeout.connect(self.update_data)
@@ -95,11 +97,12 @@ class ProcessSection(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
-
-        self.setStyleSheet("border: 5px outset #191919;")
+        #self.setStyleSheet("background-color: #191919;")
+        self.setStyleSheet("background-color: #1E1E1E; border: 5px outset #191919;")
         self.setFixedWidth(300)
 
         title = Title("Ram")
+        title.setStyleSheet("color: white;")
         self.processList = ProcessList(all_processes)
 
         #Layout
@@ -138,6 +141,7 @@ class ProcessList(QtWidgets.QWidget):
     def __init__(self, data):
         super().__init__()
 
+        self.setStyleSheet("background-color: #1E1E1E;")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
@@ -305,6 +309,20 @@ class PlayControls(QtWidgets.QWidget):
         self.button = QtWidgets.QPushButton("")
         self.button.setFixedHeight(58)
         self.button.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.button.setStyleSheet("""
+            QPushButton {
+                background-color: #3C3C3C;
+                color: white;
+                border: 1px inset #3C3C3C; /* Outset border */
+                padding: 10px 20px;
+                border-radius: 7px; /* Adjust this value for rounder corners */
+            }
+            QPushButton:pressed {
+                background-color: #5D5D5D; /* Adjust this color to your preferred lighter shade */
+            }
+        """)
+
+
         self.button.clicked.connect(self.on_button_clicked)
         self.pause_icon = QtGui.QIcon("images/pause-regular-24.png")
         self.play_icon = QtGui.QIcon("images/play-regular-24.png")
@@ -339,6 +357,7 @@ class CompleteGraphWidget(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.graph_widget.deleteLater()
+        self.setStyleSheet("background-color: transparent;")
 
         # Create widgets
         self.graph_widget = GraphWidgetsContainer(processes_deque)
