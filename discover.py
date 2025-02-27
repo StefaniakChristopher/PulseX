@@ -9,7 +9,7 @@ def list_processes():
     for proc in psutil.process_iter(['pid']):
         try:
             friendly_name = get_friendly_name(proc)
-            if friendly_name in seen:
+            if friendly_name in seen or friendly_name == "":
                 continue
             info = proc.info
             
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         procs = list_processes()
         # for proc in procs:
         #     print(f"PID: {proc['pid']}, Name: {proc['name']} ")
-        print(procs[3])
+        print(procs)
 
         elapsed_time = time.perf_counter() - start_time
 

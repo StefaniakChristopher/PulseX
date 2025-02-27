@@ -31,16 +31,21 @@ def get_friendly_name(proc):
         pass
     return proc.name()
 
-def list_processes():
+def get_usages(proc_info_list):
     seen = set()
     processes = []
     cpu_count = psutil.cpu_count(logical=True)  # number of logical cores
+
+    proc_ids = [proc_info['pid'] for proc_info in proc_info_list]
     for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
         try:
+            if proc.info['pid'] not in proc_ids:
+                continue
+
             friendly_name = get_friendly_name(proc)
             if friendly_name in seen:
                 continue
-            
+
             info = proc.info
             mem = info.get('memory_info').rss / (1024 * 1024) if info.get('memory_info') else 0
 
@@ -77,7 +82,7 @@ if __name__ == "__main__":
     while True:
         time.sleep(1)
         start_time = time.perf_counter() 
-        procs = list_processes()
+        procs = get_usages([{'pid': 0, 'name': 'System Idle Process'}, {'pid': 4, 'name': 'System'}])
         for proc in procs:
             print(f"PID: {proc['pid']}, Name: {proc['name']}, CPU: {proc['cpu_percent']}%, "
                 f"Memory: {proc['memory_mb']:.2f} MB, Disk Read: {proc['disk_read_mb']:.2f} MB, "

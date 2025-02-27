@@ -205,13 +205,9 @@ class ProcessList(QtWidgets.QWidget):
         self.data_timer.start()
 
     def add(self):
-        print(self.processes)
-        print(self.processes[0])
         process = self.processes[self.process_index]
         self.process_item = ProcessItem(process["name"], get_color_by_pid(int(process["pid"])))
-        print('dog')
         self.container_layout.addWidget(self.process_item,alignment=QtCore.Qt.AlignTop)
-        print('cat')
         self.process_index += 1
 
         if self.process_index >= len(self.processes):
