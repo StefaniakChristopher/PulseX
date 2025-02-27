@@ -63,7 +63,7 @@ class MainWidget(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.data_timer = QtCore.QTimer()
-        self.data_timer.setInterval(5000)
+        self.data_timer.setInterval(2000)
         self.data_timer.timeout.connect(self.update_data)
         self.data_timer.start()
 
@@ -371,25 +371,21 @@ class GraphWidgetsContainer(QWidget):
         #processes[ [ { mem_mb } ] ]
     def __init__(self, processes, parent=None):
         super().__init__(parent)
-        # Layout
+        
         self.p = processes
         self.i = 0
         self.glow = False
 
-        self.graph_label = QLabel()
-        self.graph_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-
         self.pix_map = QPixmap()
         self.temp_widget = QtWidgets.QWidget()
         self.temp_widget.setStyleSheet("background-color: #070f0c;")
-
+        
+        # Layout
         self.stacked_layout = QtWidgets.QStackedLayout(self)
         self.temp_widget.setLayout(self.stacked_layout)
         self.stacked_layout.setStackingMode(self.stacked_layout.StackingMode.StackAll)
-        
-        self.graph_layout = QtWidgets.QStackedLayout(self)
-        self.setLayout(self.graph_layout)
-
+    
+        # timer for graph throttling
         self.add_widget_timer = QtCore.QTimer()
         self.add_widget_timer.setInterval(1000/60)
         self.add_widget_timer.timeout.connect(self.add)
@@ -397,35 +393,31 @@ class GraphWidgetsContainer(QWidget):
         #print("-----------------------------------------------------------------------------------------------------")
 
     
-    def add(self):
-        #print(self.p[59])
-            
+    def add(self):  
         self.temp_widget.setGeometry(self.rect())
         
-        for process_index in range(50):
-            #print(process_index)
+        for process_index in range(5):
             self.graph_widget = GraphWidget(self.p, process_index + self.i)
             self.graph_widget.setGeometry(self.rect())
             self.stacked_layout.addWidget(self.graph_widget)
         
-        self.i += 49
-        
-        #print(self.i)
+        self.i += 4
         self.pix_map = self.temp_widget.grab()
+        
+        self.update()
+        if self.i >= len(processes_deque):
+            self.add_widget_timer.stop()
 
-
-        #self.i += renders_per_pass
-        # if self.i >= 400:
-        #     self.add_widget_timer.stop()
-        #     self.blur_effect = QGraphicsBlurEffect()
-        #     self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
-        #     self.blur_label = QLabel()
-        #     self.blur_label.setGeometry(self.rect())
-        #     self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-        #     self.blur_label.setPixmap(self.pix_map)
-        #     self.blur_label.setGraphicsEffect(self.blur_effect)
-        #     self.blur_pixmap = self.blur_label.grab()
-        #     self.glow = True
+            #Glow Effect
+            self.blur_effect = QGraphicsBlurEffect()
+            self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
+            self.blur_label = QLabel()
+            self.blur_label.setGeometry(self.rect())
+            self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+            self.blur_label.setPixmap(self.pix_map)
+            self.blur_label.setGraphicsEffect(self.blur_effect)
+            self.blur_pixmap = self.blur_label.grab()
+            self.glow = True
         
         
     def paintEvent(self, event):
@@ -434,15 +426,12 @@ class GraphWidgetsContainer(QWidget):
         painter1.end()
 
         if self.glow:
-            painter2 = QtGui.QPainter(self)
-            painter2.setOpacity(.85)
-            #painter2.setCompositionMode(QtGui.QPainter.CompositionMode_Screen)
-            #painter2.setCompositionMode(QtGui.QPainter.CompositionMode_Plus)
-            #painter2.setCompositionMode(QtGui.QPainter.CompositionMode_Overlay)
-            painter2.setCompositionMode(QtGui.QPainter.CompositionMode_Lighten)
+            glow_painter = QtGui.QPainter(self)
+            glow_painter.setOpacity(.85)
+            glow_painter.setCompositionMode(QtGui.QPainter.CompositionMode_Lighten)
 
-            painter2.drawPixmap(0, 0, self.blur_pixmap)
-            painter2.end()
+            glow_painter.drawPixmap(0, 0, self.blur_pixmap)
+            glow_painter.end()
 
 
 class GraphWidget(QWidget):
