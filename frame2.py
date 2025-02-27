@@ -6,6 +6,7 @@ import signal
 import concurrent.futures
 from collections import deque
 from discover import list_processes
+from fakeusage import fake_get_usage
 
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMainWindow, QSizePolicy, QGraphicsBlurEffect # type: ignore
@@ -17,6 +18,7 @@ from PySide6.QtGui import QFontDatabase, QFont
 
 play = True
 collect_data = True
+data_targets = []
 
 def random_color():
     colors = [
@@ -206,7 +208,7 @@ class ProcessList(QtWidgets.QWidget):
 
     def add(self):
         process = self.processes[self.process_index]
-        self.process_item = ProcessItem(process["name"], get_color_by_pid(int(process["pid"])))
+        self.process_item = ProcessItem(process, get_color_by_pid(int(process["pid"])))
         self.container_layout.addWidget(self.process_item,alignment=QtCore.Qt.AlignTop)
         self.process_index += 1
 
@@ -215,10 +217,11 @@ class ProcessList(QtWidgets.QWidget):
 
 
 class ProcessItem(QtWidgets.QWidget):
-    def __init__(self, processName, color):
+    def __init__(self, process, color):
         super().__init__()
 
         #color = random_color()
+        self.process = process
         
         #self.setStyleSheet("background-color: #69C4E8;")
         #self.setFixedSize(256, 50)
@@ -231,10 +234,10 @@ class ProcessItem(QtWidgets.QWidget):
         self.checkbox = QtWidgets.QCheckBox()
         self.checkbox.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.checkbox.setFixedSize(15, 15)
-        #self.checkbox.setStyleSheet("QCheckBox::indicator:unchecked { border: none; }")
         self.checkbox.setStyleSheet("QCheckBox::indicator:checked {background-color:" + str(color) +" ; border: none;} QCheckBox::indicator:unchecked { border: none;  };")
+        self.checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         #self.checkbox.setStyleSheet("border: none")
-        self.text = QtWidgets.QLabel(processName)
+        self.text = QtWidgets.QLabel(process['name'])
         self.text.setStyleSheet("color: white; font-weight: bold; border: none")
 
         #border: 1px solid {color};
@@ -265,6 +268,18 @@ class ProcessItem(QtWidgets.QWidget):
         self.container_layout.addWidget(self.checkbox)
         self.container_layout.addWidget(self.text)
         self.container_layout.addWidget(self.folderButton)
+    
+    def on_checkbox_state_changed(self, state):
+        print(f"Checkbox state changed: {state}")
+        if state == 2:
+            print('mew')
+            if self.process not in data_targets:
+                data_targets.append(self.process)
+                
+        else:
+            if self.process in data_targets:
+                data_targets.remove(self.process)
+                
 
 
 #-----------------------------------------------------------------------------------------------------
@@ -400,17 +415,17 @@ class GraphWidgetsContainer(QWidget):
 
 
         #self.i += renders_per_pass
-        if self.i >= 400:
-            self.add_widget_timer.stop()
-            self.blur_effect = QGraphicsBlurEffect()
-            self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
-            self.blur_label = QLabel()
-            self.blur_label.setGeometry(self.rect())
-            self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-            self.blur_label.setPixmap(self.pix_map)
-            self.blur_label.setGraphicsEffect(self.blur_effect)
-            self.blur_pixmap = self.blur_label.grab()
-            self.glow = True
+        # if self.i >= 400:
+        #     self.add_widget_timer.stop()
+        #     self.blur_effect = QGraphicsBlurEffect()
+        #     self.blur_effect.setBlurRadius(20)  # Adjust the blur radius
+        #     self.blur_label = QLabel()
+        #     self.blur_label.setGeometry(self.rect())
+        #     self.blur_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        #     self.blur_label.setPixmap(self.pix_map)
+        #     self.blur_label.setGraphicsEffect(self.blur_effect)
+        #     self.blur_pixmap = self.blur_label.grab()
+        #     self.glow = True
         
         
     def paintEvent(self, event):
@@ -657,7 +672,8 @@ def data_thread():
     global collect_data
     while collect_data:
         time.sleep(2)
-        processes_deque.append(usage.list_processes())
+        print(data_targets)
+        processes_deque.append(usage.get_usages(data_targets))
 
 
 if __name__ == "__main__":

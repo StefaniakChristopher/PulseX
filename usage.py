@@ -92,3 +92,5 @@ if __name__ == "__main__":
         elapsed_time = time.perf_counter() - start_time
 
         print(f"Elapsed time: {elapsed_time:.2f} seconds.")
+
+        #{'pid': 0, 'name': 'System Idle Process'}, {'pid': 4, 'name': 'System'}
