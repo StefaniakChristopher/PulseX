@@ -4,10 +4,10 @@ import time
 import usage
 import signal
 import concurrent.futures
+#import threading
 from collections import deque
 from discover import list_processes
 from fakeusage import fake_get_usage
-
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMainWindow, QSizePolicy, QGraphicsBlurEffect # type: ignore
 from PySide6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor, QPen, QLinearGradient # type: ignore
@@ -19,6 +19,7 @@ from PySide6.QtGui import QFontDatabase, QFont
 play = True
 collect_data = True
 data_targets = []
+#lock = threading.Lock()
 
 def random_color():
     colors = [
@@ -351,6 +352,7 @@ class PlayControls(QtWidgets.QWidget):
 class CompleteGraphWidget(QWidget):
     def update_data(self):
         self.graph_widget.deleteLater()
+        #with lock:
         self.graph_widget = GraphWidgetsContainer(processes_deque, self)
         self.stacked_layout.addWidget(self.graph_widget)
 
@@ -399,6 +401,7 @@ class GraphWidgetsContainer(QWidget):
 
         self.pix_map = QPixmap()
         self.temp_widget = QtWidgets.QWidget()
+        self.temp_widget.resize(self.size())
         self.temp_widget.setStyleSheet("background-color: #070f0c;")
         
         # Layout
@@ -417,19 +420,20 @@ class GraphWidgetsContainer(QWidget):
     
     def add(self):  
         #self.temp_widget.setGeometry(self.rect())
-        self.temp_widget.resize(self.size())
+        #self.temp_widget.resize(self.size())
         #print("SIZE2: ",self.size())
+        count = (len(processes_deque[59])//2 + 1)
         
-        for process_index in range(5):
+        for process_index in range(count):
             self.graph_widget = GraphWidget(self.p, process_index + self.i)
             self.graph_widget.resize(self.size())
             self.stacked_layout.addWidget(self.graph_widget)
         
-        self.i += 4
+        self.i += count
         self.pix_map = self.temp_widget.grab()
         
-        
-        if self.i >= len(processes_deque):
+        #print(len(processes_deque[59]))
+        if self.i >= len(processes_deque[59]):
             self.add_widget_timer.stop()
 
             #Glow Effect
@@ -465,6 +469,7 @@ class GraphWidget(QWidget):
         self.process_data = []
         self.pid = 0
         self.name = ""
+        #print(process_index)
 
         for time_index in range(60):
             if (len(data[time_index]) > process_index):
@@ -511,7 +516,9 @@ class GraphWidget(QWidget):
 
 class ScrollingGrid(QWidget):
     def update_counter(self):
-        self.counter += self.rect().width() / 60 #1
+        #print(self.rect().width() / 60)
+        self.counter += self.rect().width() // 60 #1
+        #print("!!!")
         #self.update() 
 
     def __init__(self, parent=None):
@@ -540,6 +547,8 @@ class ScrollingGrid(QWidget):
             painter.drawLine(x + offset, margin, x + offset, rect.height() - margin)
         for y in range(margin, rect.height() - margin, grid_size):
             painter.drawLine(margin, y, rect.width() - margin, y)
+        
+        painter.end()
 
 
 # class TimeLineScrubber(QtWidgets.QWidget):
@@ -685,6 +694,7 @@ def data_thread():
     while collect_data:
         time.sleep(2)
         print(data_targets)
+        #with lock:
         processes_deque.append(usage.get_usages(data_targets))
 
 
