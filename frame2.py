@@ -46,7 +46,7 @@ def get_color_by_pid(pid):
     "#27c28c",
     "#4daa57"
 ]
-    return colors[pid%len(colors)]
+    return colors[ pid // 4 % len(colors) ]
 
 class MainWidget(QtWidgets.QWidget):
     def update_data(self):
@@ -693,8 +693,6 @@ def data_thread():
     global collect_data
     while collect_data:
         time.sleep(2)
-        print(data_targets)
-        #with lock:
         processes_deque.append(usage.get_usages(data_targets))
 
 
