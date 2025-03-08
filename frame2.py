@@ -263,6 +263,7 @@ class ProcessItem(QtWidgets.QWidget):
                 border: 2px inset #101010;
             }
         """)
+        self.folderButton.clicked.connect(self.on_button_clicked)
 
     
         #Layout
@@ -284,6 +285,12 @@ class ProcessItem(QtWidgets.QWidget):
         else:
             if self.process in data_targets:
                 data_targets.remove(self.process)
+    
+    def on_button_clicked(self):
+        if self.process['exe_path'] != None:
+            usage.open_file_location(self.process['exe_path'])
+        else:
+            print("No path found")
                 
 
 

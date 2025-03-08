@@ -1,6 +1,7 @@
 import psutil
 import time
 import win32api
+import subprocess
 
 def get_exe_info(exe_path):
     """Retrieve version info from an executable."""
@@ -75,6 +76,14 @@ def get_usages(proc_info_list):
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return processes
+
+
+def open_file_location(exe_path):
+    try:
+        subprocess.run(['explorer','/select,', exe_path])
+    except Exception:
+        print("Could not find: ", exe_path)
+        pass
 
 
 if __name__ == "__main__":
