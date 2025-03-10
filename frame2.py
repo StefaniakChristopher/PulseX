@@ -19,6 +19,7 @@ from PySide6.QtGui import QFontDatabase, QFont
 play = True
 collect_data = True
 data_targets = []
+graphs_per_pass = 10
 #lock = threading.Lock()
 
 def random_color():
@@ -397,6 +398,8 @@ class GraphWidgetsContainer(QWidget):
     def __init__(self, processes, parent=None):
         super().__init__(parent)
         self.resize(parent.size())
+        global graphs_per_pass
+        self.graphs_per_pass = graphs_per_pass
         #print(parent.size())
         #print("SIZE1: ",self.size())
         self.p = processes
@@ -423,10 +426,9 @@ class GraphWidgetsContainer(QWidget):
 
     
     def add(self):  
-        #self.temp_widget.setGeometry(self.rect())
-        #self.temp_widget.resize(self.size())
-        #print("SIZE2: ",self.size())
-        count = (len(processes_deque[59])//2 + 1)
+        size = len(processes_deque[59]) - self.i
+        count = min(size, self.graphs_per_pass)
+        #print("COUNT: ",count)
         
         for process_index in range(count):
             self.graph_widget = GraphWidget(self.p, process_index + self.i)
@@ -437,7 +439,7 @@ class GraphWidgetsContainer(QWidget):
         self.pix_map = self.temp_widget.grab()
         
         #print(len(processes_deque[59]))
-        if self.i >= len(processes_deque[59]):
+        if self.i >= size:
             self.add_widget_timer.stop()
 
             #Glow Effect
