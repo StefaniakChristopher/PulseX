@@ -8,7 +8,8 @@ def list_processes():
     processes = []
     for proc in psutil.process_iter(['pid']):
         try:
-            friendly_name = get_friendly_name(proc)
+            exe_path = proc.exe()
+            friendly_name = get_friendly_name(proc,exe_path)
             if friendly_name in seen or friendly_name == "":
                 continue
             info = proc.info
@@ -17,6 +18,7 @@ def list_processes():
             processes.append({
                 'pid': info.get('pid'),
                 'name': friendly_name,
+                'exe_path': exe_path
             })
 
             seen.add(friendly_name)

@@ -18,10 +18,10 @@ def get_exe_info(exe_path):
         return {}
 
 
-def get_friendly_name(proc):
+def get_friendly_name(proc,exe_path):
     """Return the friendly name for a process, using version info if available."""
     try:
-        exe_path = proc.exe()  # Get the process executable path
+
         info = get_exe_info(exe_path)
         # Prefer FileDescription, then ProductName; otherwise fallback to process name.
         if info.get("FileDescription"):
@@ -43,7 +43,7 @@ def get_usages(proc_info_list):
             if proc.info['pid'] not in proc_ids:
                 continue
 
-            friendly_name = get_friendly_name(proc)
+            friendly_name = get_friendly_name(proc, proc.exe())
             if friendly_name in seen:
                 continue
 
