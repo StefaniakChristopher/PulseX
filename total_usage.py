@@ -1,7 +1,7 @@
 import psutil
 import time
 
-def get_system_usage():
+def get_system_usage(prev_disk_io):
     # Get CPU usage
     cpu_usage = psutil.cpu_percent(interval=1)
 
@@ -10,9 +10,6 @@ def get_system_usage():
     ram_usage = memory_info.percent
 
     # Get disk usage
-    disk_io = psutil.disk_io_counters()
-    prev_disk_io = disk_io
-    time.sleep(1)
     current_disk_io = psutil.disk_io_counters()
     disk_read = (current_disk_io.read_bytes - prev_disk_io.read_bytes) // (1024 * 1024)  # Convert bytes to MB
     disk_write = (current_disk_io.write_bytes - prev_disk_io.write_bytes) // (1024 * 1024)  # Convert bytes to MB
