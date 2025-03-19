@@ -1,40 +1,37 @@
 import sys
-import random
 import time
 import usage
-import signal
 import concurrent.futures
-#import threading
 from collections import deque
 from discover import list_processes
 from fakeusage import fake_get_usage
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMainWindow, QSizePolicy, QGraphicsBlurEffect # type: ignore
-from PySide6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor, QPen, QLinearGradient # type: ignore
-from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis # type: ignore
-from PySide6.QtCore import QPointF, Qt, QTimer # type: ignore
-from PySide6.QtGui import QFontDatabase, QFont
-#from PySide6.QtWidgets import  # type: ignore
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QFontDatabase, QFont # type: ignore
+#from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis # type: ignore
+from PySide6.QtCore import Qt, QTimer, Signal # type: ignore
 
 play = True
 collect_data = True
 data_targets = []
 graphs_per_pass = 10
-#lock = threading.Lock()
+current_resource = "memory_mb"#"cpu_percent"
 
-def random_color():
-    colors = [
-    "#fffd77",
-    "#ffa06e",
-    "#ff4365",
-    "#235789",
-    "#1298a5",
-    "#00d9c0",
-    "#27c28c",
-    "#4daa57"
-]
-    return random.choice(colors)
-
+# Create a deque with a fixed size
+max_size = 60
+processes_deque = deque([[ {'pid': -1,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            }, {'pid': -2,
+                'name': "null",
+                'cpu_percent': 0.0,
+                'memory_mb': 0.0,
+                'disk_read_mb': 0.0,
+                'disk_write_mb': 0.0
+            } ] for _ in range(max_size)], maxlen=max_size)
 
 def get_color_by_pid(pid):
     colors = [
@@ -50,8 +47,12 @@ def get_color_by_pid(pid):
     return colors[ pid // 4 % len(colors) ]
 
 class MainWidget(QtWidgets.QWidget):
+    def set_resource(self, resource_name):
+        global current_resource
+        self.process_section.title.update_name()
+        current_resource = resource_name
+
     def update_data(self):
-        global play
         if play == True:
             self.graph_section.graph.update_data()
             self.graph_section.graph.grid_widget.update_counter()
@@ -66,13 +67,10 @@ class MainWidget(QtWidgets.QWidget):
         super().__init__()
 
         self.setStyleSheet("background-color: #1E1E1E;")
-        self.data_timer = QtCore.QTimer()
+        self.data_timer = QTimer()
         self.data_timer.setInterval(2000)
         self.data_timer.timeout.connect(self.update_data)
         self.data_timer.start()
-
-
-
 
         self.setWindowTitle("Pulse X")
 
@@ -103,32 +101,49 @@ class ProcessSection(QtWidgets.QWidget):
         self.setStyleSheet("background-color: #1E1E1E; border: 5px outset #191919;")
         self.setFixedWidth(300)
 
-        title = Title("RAM")
-        title.setStyleSheet("color: white;")
+        self.title = Title("RAM")
+        self.title.setStyleSheet("color: white;")
         self.processList = ProcessList(all_processes)
 
         #Layout
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(title)
+        self.layout.addWidget(self.title)
         self.layout.addWidget(self.processList)
 
 
 class Title(QtWidgets.QWidget):
+    signal_to_main = Signal()
+
+    def mousePressEvent(self, event):
+        self.signal_to_main.emit()
+        super().mousePressEvent(event)
+
+    def update_name(self):
+        resource_names = {
+            "cpu_percent": "CPU",
+            "memory_mb": "RAM",
+            "disk_read_mb": "DISK",
+            "disk_write_mb": "DISK"
+        }
+        
+        self.text.setText(resource_names[current_resource])
+
     def __init__(self, name):
         super().__init__()
+        self.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+
         #Create Widget
-        text = QtWidgets.QLabel(name, alignment=QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        
+        self.text = QtWidgets.QLabel(name, alignment=QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+
+        #Font
         font_id = QFontDatabase.addApplicationFont("./font/Exo_2/Exo2-VariableFont_wght.ttf")
         font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-
         font = QFont(font_family)
-        #font.setPointSize(30)
         font.setPixelSize(65)
         font.setStyleStrategy(QFont.PreferAntialias)
         font.setWeight(QFont.Black)
-        text.setFont(font)
+        self.text.setFont(font)
 
         #resize widget
         self.setFixedHeight(58)
@@ -137,7 +152,7 @@ class Title(QtWidgets.QWidget):
         #Layout
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(text)
+        layout.addWidget(self.text)
 
 class ProcessList(QtWidgets.QWidget):
     def __init__(self, data):
@@ -198,16 +213,10 @@ class ProcessList(QtWidgets.QWidget):
         # Set the container widget as the scroll area's widget
         self.scroll_area.setWidget(self.container_widget)
         
-        # Add process containers to the container widget
-        
-        #for process in data[time_index]:
-        #    self.process_item = ProcessItem(process["name"], get_color_by_pid(int(process["pid"])))
-        #    self.container_layout.addWidget(self.process_item,alignment=QtCore.Qt.AlignTop)
-        
         # Add the scroll area to the main layout
         layout.addWidget(self.scroll_area)
 
-        self.data_timer = QtCore.QTimer()
+        self.data_timer = QTimer()
         self.data_timer.setInterval(1000/30)
         self.data_timer.timeout.connect(self.add)
         self.data_timer.start()
@@ -228,9 +237,6 @@ class ProcessItem(QtWidgets.QWidget):
 
         #color = random_color()
         self.process = process
-        
-        #self.setStyleSheet("background-color: #69C4E8;")
-        #self.setFixedSize(256, 50)
         
         #Widget Creation
         self.container = QtWidgets.QFrame()
@@ -266,7 +272,6 @@ class ProcessItem(QtWidgets.QWidget):
         """)
         self.folderButton.clicked.connect(self.on_button_clicked)
 
-    
         #Layout
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -291,10 +296,10 @@ class ProcessItem(QtWidgets.QWidget):
         usage.open_file_location(self.process['exe_path'])
                 
 
-
 #-----------------------------------------------------------------------------------------------------
 #                                        GRAPH SECTION
 #-----------------------------------------------------------------------------------------------------
+
 
 class GraphSection(QtWidgets.QWidget):
     def __init__(self):
@@ -417,7 +422,7 @@ class GraphWidgetsContainer(QWidget):
         self.stacked_layout.setStackingMode(self.stacked_layout.StackingMode.StackAll)
     
         # timer for graph throttling
-        self.add_widget_timer = QtCore.QTimer()
+        self.add_widget_timer = QTimer()
         self.add_widget_timer.setInterval(1000/60)
         self.add_widget_timer.timeout.connect(self.add)
         self.add()
@@ -498,22 +503,28 @@ class GraphWidget(QWidget):
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QtGui.QPainter(self)
-        #painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.Antialiasing)
 
         rect = self.rect()
         margin = 20
         pen = QPen(QColor( get_color_by_pid( int( self.pid ) ) ), 2)
         painter.setPen(pen)
-        
-        max_value = 500.0#max(self.data)
+
+        resource_max_values = {
+            "cpu_percent": 10,#100,
+            "memory_mb": 500,#16000, 
+            "disk_read_mb": 500,
+            "disk_write_mb": 500
+        }
+        max_value = resource_max_values[current_resource]
         scale_x = (rect.width() - 2 * margin) / (len(self.data) - 1)
         scale_y = (rect.height() - 2 * margin) / max_value
 
         for i in range(len(self.process_data ) - 1):
             x1 = margin + i * scale_x
-            y1 = rect.height() - margin - self.process_data[i]["memory_mb"] * scale_y
+            y1 = rect.height() - margin - self.process_data[i][current_resource] * scale_y
             x2 = margin + (i + 1) * scale_x
-            y2 = rect.height() - margin - self.process_data[i + 1]["memory_mb"] * scale_y
+            y2 = rect.height() - margin - self.process_data[i + 1][current_resource] * scale_y
             painter.drawLine(x1, y1, x2, y2)
             #memory_mb
             #cpu_percent
@@ -522,9 +533,8 @@ class GraphWidget(QWidget):
 
 class ScrollingGrid(QWidget):
     def update_counter(self):
-        #print(self.rect().width() / 60)
-        self.counter += self.rect().width() // 60 #1
-        #print("!!!")
+        #self.counter += ( self.rect().width() - ( 2 * self.margin ) ) // 60
+        self.counter += self.rect().width() // 60
         #self.update() 
 
     def __init__(self, parent=None):
@@ -541,7 +551,7 @@ class ScrollingGrid(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         rect = self.rect()
-        margin = 20
+        self.margin = 20
         grid_size = 60
         offset = (-self.counter * rect.width() / 1000.2)%(grid_size) #Modulus 😎
 
@@ -549,10 +559,10 @@ class ScrollingGrid(QWidget):
         pen = QPen(Qt.lightGray, .25, QtCore.Qt.DotLine)
         painter.setPen(pen)
 
-        for x in range(margin, rect.width() - margin, grid_size):
-            painter.drawLine(x + offset, margin, x + offset, rect.height() - margin)
-        for y in range(margin, rect.height() - margin, grid_size):
-            painter.drawLine(margin, y, rect.width() - margin, y)
+        for x in range(self.margin, rect.width() - self.margin, grid_size):
+            painter.drawLine(x + offset, self.margin, x + offset, rect.height() - self.margin)
+        for y in range(self.margin, rect.height() - self.margin, grid_size):
+            painter.drawLine(self.margin, y, rect.width() - self.margin, y)
         
         painter.end()
 
@@ -648,44 +658,27 @@ class MouseDetector(QtWidgets.QWidget):
         super().leaveEvent(event)
 
 
-# Create a deque with a fixed size
-max_size = 60
-processes_deque = deque([[ {'pid': -1,
-                'name': "null",
-                'cpu_percent': 0.0,
-                'memory_mb': 0.0,
-                'disk_read_mb': 0.0,
-                'disk_write_mb': 0.0
-            }, {'pid': -2,
-                'name': "null",
-                'cpu_percent': 0.0,
-                'memory_mb': 0.0,
-                'disk_read_mb': 0.0,
-                'disk_write_mb': 0.0
-            } ] for _ in range(max_size)], maxlen=max_size)
 
 
 
 #processed_data = []
 
-def refactor_data(data):
-    process_array = []
-    refactored_data = []
+#def refactor_data(data):
+ #   process_array = []
+ #   refactored_data = []
 
-    time_index = 0
-    for process_index in range(len(data[time_index])):
-        for i in range(60):
-            process_array.append(data[i][process_index])
-        
-        #print(time_index)
-        time_index += 1
+ #   time_index = 0
+ #   for process_index in range(len(data[time_index])):
+ #       for i in range(60):
+ #           process_array.append(data[i][process_index])
+ #       
+ #       #print(time_index)
+ #       time_index += 1
 
-        
-
-        refactored_data.append(process_array[:])
-        process_array = []
+ #       refactored_data.append(process_array[:])
+ #       process_array = []
     
-    return refactored_data
+ #   return refactored_data
 
 def gui_thread():
     app = QtWidgets.QApplication([]) 
@@ -699,7 +692,10 @@ def data_thread():
     global collect_data
     while collect_data:
         time.sleep(2)
-        processes_deque.append(usage.get_usages(data_targets))
+        add_data(usage.get_usages(data_targets))
+
+def add_data(new_data):
+    processes_deque.append(new_data)
 
 
 if __name__ == "__main__":
