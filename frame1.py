@@ -9,22 +9,25 @@ from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis # type:
 from PySide6.QtCore import QPointF, Qt, QTimer # type: ignore
 from PySide6.QtGui import QFontDatabase, QFont
 #from PySide6.QtWidgets import  # type: ignore
+from PySide6.QtCore import Qt, QTimer, Signal
 
 class MainWidget(QtWidgets.QWidget):
+    signal_to_main = Signal()
+    def sendSigToMain(self):
+        self.signal_to_main.emit()
     def __init__(self, data):
         super().__init__()
         self.setWindowTitle("Pulse X")
-
+	
         #Instantiate Widgets
         process_section = ProcessSection()
         graph_section = GraphSection(data)
-
+        process_section.signal_to_main.connect(self, self.sendSigToMain);
         #Layout
         layout = QtWidgets.QHBoxLayout(self)
         #layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(process_section)
         layout.addWidget(graph_section)
-
 
 class Title(QtWidgets.QWidget):
     def __init__(self, name):
@@ -53,6 +56,9 @@ class Title(QtWidgets.QWidget):
 
 
 class ProcessSection(QtWidgets.QWidget):
+    signal_to_main = Signal()
+    def sendSigToMain(self):
+        self.signal_to_main.emit()
     def __init__(self):
         super().__init__()
 
@@ -61,7 +67,7 @@ class ProcessSection(QtWidgets.QWidget):
 
         title = Title("PulseX")
         metricList = MetricList()
-
+        metricList.signal_to_main.connect(self, self.sendSigToMain);
         #Layout
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -110,6 +116,9 @@ class PlayControls(QtWidgets.QWidget):
 
 
 class MetricList(QtWidgets.QWidget):
+    signal_to_main = Signal()
+    def sendSigToMain(self):
+        self.signal_to_main.emit()
     def __init__(self):
         super().__init__()
 
@@ -171,6 +180,12 @@ class MetricList(QtWidgets.QWidget):
         self.container_layout.addWidget(self.gpu_item,alignment=QtCore.Qt.AlignTop)
         self.container_layout.addWidget(self.network_item,alignment=QtCore.Qt.AlignTop)
         self.container_layout.addWidget(self.disk_item,alignment=QtCore.Qt.AlignTop)
+
+        self.cpu_item.signal_to_main.connect(self, self.sendSigToMain);
+        self.memory_item.signal_to_main.connect(self, self.sendSigToMain);
+        self.gpu_item.signal_to_main.connect(self, self.sendSigToMain);
+        self.network_item.signal_to_main.connect(self, self.sendSigToMain);
+        self.disk_item.signal_to_main.connect(self, self.sendSigToMain);
         # Set the container widget as the scroll area's widget
         self.scroll_area.setWidget(self.container_widget)
 
@@ -206,6 +221,10 @@ def darkenHex(hexchar,spaces):
 	a=max(0,a-spaces);
 	return hexes[a];
 class MetricItem(QtWidgets.QWidget):
+    signal_to_main = Signal()
+    def mousePressEvent(self, event):
+        self.signal_to_main.emit()
+        super().mousePressEvent(event)
     def __init__(self, processName,color_choice):
         super().__init__()
 
