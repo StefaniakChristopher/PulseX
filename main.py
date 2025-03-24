@@ -9,8 +9,9 @@ import random
 class MainWindow(QWidget):
 
     
-    def handle_sig_one(self,resource = "hi"):
-        print("Hello");
+    def handle_sig_one(self):
+        x = self.frame1.selectedMonitor;
+        print(x);
     def handle_signal(self, resource = "cpu_percent"):
         self.frame2.set_resource(resource) # set resource to be displayed
         self.layout.setCurrentIndex( not self.layout.currentIndex() ) # toggle between 0 and 1
@@ -41,16 +42,17 @@ class MainWindow(QWidget):
         print("check 3");
         # init widgets
         self.frame1 = frame1.MainWidget(proccess_array)
-        #self.frame2 = frame2.MainWidget()
+        self.frame2 = frame2.MainWidget()
         print("check 4");
         # connect signals
+      
         self.frame1.signal_to_main.connect(self, self.handle_sig_one)
-        #self.frame2.process_section.title.signal_to_main.connect(self, self.handle_signal) 
+        self.frame2.process_section.title.signal_to_main.connect(self, self.handle_signal) 
         print("check 5");
         # create layout
         self.layout = QStackedLayout()
         self.layout.addWidget(self.frame1)
-        #self.layout.addWidget(self.frame2)
+        self.layout.addWidget(self.frame2)
         self.setLayout(self.layout)
 
 

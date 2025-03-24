@@ -13,20 +13,22 @@ from PySide6.QtCore import Qt, QTimer, Signal
 
 class MainWidget(QtWidgets.QWidget):
     signal_to_main = Signal()
+    selectedMonitor="CPU"
     def sendSigToMain(self):
+        self.selectedMonitor=self.process_section.selectedMonitor;
         self.signal_to_main.emit()
     def __init__(self, data):
         super().__init__()
         self.setWindowTitle("Pulse X")
 	
         #Instantiate Widgets
-        process_section = ProcessSection()
+        self.process_section = ProcessSection()
         graph_section = GraphSection(data)
-        process_section.signal_to_main.connect(self, self.sendSigToMain);
+        self.process_section.signal_to_main.connect(self, self.sendSigToMain);
         #Layout
         layout = QtWidgets.QHBoxLayout(self)
         #layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(process_section)
+        layout.addWidget(self.process_section)
         layout.addWidget(graph_section)
 
 class Title(QtWidgets.QWidget):
@@ -57,7 +59,9 @@ class Title(QtWidgets.QWidget):
 
 class ProcessSection(QtWidgets.QWidget):
     signal_to_main = Signal()
+    selectedMonitor = "CPU";
     def sendSigToMain(self):
+        self.selectedMonitor=self.metricList.selectedMonitor
         self.signal_to_main.emit()
     def __init__(self):
         super().__init__()
@@ -66,13 +70,13 @@ class ProcessSection(QtWidgets.QWidget):
         self.setFixedWidth(300)
 
         title = Title("PulseX")
-        metricList = MetricList()
-        metricList.signal_to_main.connect(self, self.sendSigToMain);
+        self.metricList = MetricList()
+        self.metricList.signal_to_main.connect(self, self.sendSigToMain);
         #Layout
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(title)
-        layout.addWidget(metricList)
+        layout.addWidget(self.metricList)
 
 
 class GraphSection(QtWidgets.QWidget):
@@ -117,7 +121,20 @@ class PlayControls(QtWidgets.QWidget):
 
 class MetricList(QtWidgets.QWidget):
     signal_to_main = Signal()
-    def sendSigToMain(self):
+    selectedMonitor="Hello"
+    def sendDiskSigToMain(self):
+         self.sendSigToMain("Disk");
+    def sendGPUSigToMain(self):
+         self.sendSigToMain("GPU");
+    def sendCPUSigToMain(self):
+         self.sendSigToMain("CPU");
+    def sendNetworkSigToMain(self):
+         self.sendSigToMain("Network");
+    def sendMemorySigToMain(self):
+         self.sendSigToMain("Memory");
+
+    def sendSigToMain(self,resource="CPU"):
+        self.selectedMonitor=resource;
         self.signal_to_main.emit()
     def __init__(self):
         super().__init__()
@@ -181,11 +198,11 @@ class MetricList(QtWidgets.QWidget):
         self.container_layout.addWidget(self.network_item,alignment=QtCore.Qt.AlignTop)
         self.container_layout.addWidget(self.disk_item,alignment=QtCore.Qt.AlignTop)
 
-        self.cpu_item.signal_to_main.connect(self, self.sendSigToMain);
-        self.memory_item.signal_to_main.connect(self, self.sendSigToMain);
-        self.gpu_item.signal_to_main.connect(self, self.sendSigToMain);
-        self.network_item.signal_to_main.connect(self, self.sendSigToMain);
-        self.disk_item.signal_to_main.connect(self, self.sendSigToMain);
+        self.cpu_item.signal_to_main.connect(self, self.sendCPUSigToMain);
+        self.memory_item.signal_to_main.connect(self, self.sendMemorySigToMain);
+        self.gpu_item.signal_to_main.connect(self, self.sendGPUSigToMain);
+        self.network_item.signal_to_main.connect(self, self.sendNetworkSigToMain);
+        self.disk_item.signal_to_main.connect(self, self.sendDiskSigToMain);
         # Set the container widget as the scroll area's widget
         self.scroll_area.setWidget(self.container_widget)
 
