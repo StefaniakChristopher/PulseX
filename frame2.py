@@ -23,14 +23,14 @@ processes_deque = deque([[ {'pid': -1,
                 'name': "null",
                 'cpu_percent': 0.0,
                 'memory_mb': 0.0,
-                'disk_read_mb': 0.0,
-                'disk_write_mb': 0.0
+                'disk_read_speed_mb_s': 0.0,
+                'disk_write_speed_mb_s': 0.0
             }, {'pid': -2,
                 'name': "null",
                 'cpu_percent': 0.0,
                 'memory_mb': 0.0,
-                'disk_read_mb': 0.0,
-                'disk_write_mb': 0.0
+                'disk_read_speed_mb_s': 0.0,
+                'disk_write_speed_mb_s': 0.0
             } ] for _ in range(max_size)], maxlen=max_size)
 
 def get_color_by_pid(pid):
@@ -123,8 +123,8 @@ class Title(QtWidgets.QWidget):
         resource_names = {
             "cpu_percent": "CPU",
             "memory_mb": "RAM",
-            "disk_read_mb": "DISK",
-            "disk_write_mb": "DISK"
+            "disk_read_speed_mb_s": "DISK READ",
+            "disk_write_mb": "DISK WRITE"
         }
         
         self.text.setText(resource_names[current_resource])
@@ -494,8 +494,8 @@ class GraphWidget(QWidget):
                 'name': self.name,
                 'cpu_percent': 0.0,
                 'memory_mb': 0.0,
-                'disk_read_mb': 0.0,
-                'disk_write_mb': 0.0
+                'disk_read_speed_mb_s': 0.0,
+                'disk_write_speed_mb_s': 0.0
             })
 
         #print(data)
@@ -513,8 +513,8 @@ class GraphWidget(QWidget):
         resource_max_values = {
             "cpu_percent": 10,#100,
             "memory_mb": 500,#16000, 
-            "disk_read_mb": 500,
-            "disk_write_mb": 500
+            "disk_read_speed_mb_s": 500,
+            "disk_write_speed_mb_s": 500
         }
         max_value = resource_max_values[current_resource]
         scale_x = (rect.width() - 2 * margin) / (len(self.data) - 1)
