@@ -49,8 +49,8 @@ def get_color_by_pid(pid):
 class MainWidget(QtWidgets.QWidget):
     def set_resource(self, resource_name):
         global current_resource
-        self.process_section.title.update_name()
         current_resource = resource_name
+        self.process_section.title.update_name()
 
     def update_data(self):
         if play == True:
@@ -126,7 +126,6 @@ class Title(QtWidgets.QWidget):
             "disk_read_speed_mb_s": "DISK READ",
             "disk_write_mb": "DISK WRITE"
         }
-        
         self.text.setText(resource_names[current_resource])
 
     def __init__(self, name):

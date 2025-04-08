@@ -122,16 +122,14 @@ class PlayControls(QtWidgets.QWidget):
 class MetricList(QtWidgets.QWidget):
     signal_to_main = Signal()
     selectedMonitor="Hello"
-    def sendDiskSigToMain(self):
-         self.sendSigToMain("Disk");
-    def sendGPUSigToMain(self):
-         self.sendSigToMain("GPU");
+    def sendDiskReadSigToMain(self):
+         self.sendSigToMain("disk_read_speed_mb_s");
     def sendCPUSigToMain(self):
-         self.sendSigToMain("CPU");
-    def sendNetworkSigToMain(self):
-         self.sendSigToMain("Network");
+         self.sendSigToMain("cpu_percent");
+    def sendDiskWriteSigToMain(self):
+         self.sendSigToMain("disk_write_mb");
     def sendMemorySigToMain(self):
-         self.sendSigToMain("Memory");
+         self.sendSigToMain("memory_mb");
 
     def sendSigToMain(self,resource="CPU"):
         self.selectedMonitor=resource;
@@ -189,20 +187,20 @@ class MetricList(QtWidgets.QWidget):
         # Add metric containers to the container widget
         self.cpu_item = MetricItem("CPU",0)
         self.memory_item = MetricItem("Memory",1)
-        self.gpu_item = MetricItem("GPU",2)
-        self.network_item = MetricItem("Network",3)
-        self.disk_item = MetricItem("Disk",4)
+        self.disk_write_item = MetricItem("Disk Write",2)
+        self.disk_read_item = MetricItem("Disk Read",3)
+        #self.disk_item = MetricItem("Disk",4)
         self.container_layout.addWidget(self.cpu_item,alignment=QtCore.Qt.AlignTop)
         self.container_layout.addWidget(self.memory_item,alignment=QtCore.Qt.AlignTop)
-        self.container_layout.addWidget(self.gpu_item,alignment=QtCore.Qt.AlignTop)
-        self.container_layout.addWidget(self.network_item,alignment=QtCore.Qt.AlignTop)
-        self.container_layout.addWidget(self.disk_item,alignment=QtCore.Qt.AlignTop)
+        self.container_layout.addWidget(self.disk_write_item,alignment=QtCore.Qt.AlignTop)
+        self.container_layout.addWidget(self.disk_read_item,alignment=QtCore.Qt.AlignTop)
+        #self.container_layout.addWidget(self.disk_item,alignment=QtCore.Qt.AlignTop)
 
         self.cpu_item.signal_to_main.connect(self, self.sendCPUSigToMain);
         self.memory_item.signal_to_main.connect(self, self.sendMemorySigToMain);
-        self.gpu_item.signal_to_main.connect(self, self.sendGPUSigToMain);
-        self.network_item.signal_to_main.connect(self, self.sendNetworkSigToMain);
-        self.disk_item.signal_to_main.connect(self, self.sendDiskSigToMain);
+        self.disk_write_item.signal_to_main.connect(self, self.sendDiskWriteSigToMain);
+        self.disk_read_item.signal_to_main.connect(self, self.sendDiskReadSigToMain);
+        #self.disk_item.signal_to_main.connect(self, self.sendDiskSigToMain);
         # Set the container widget as the scroll area's widget
         self.scroll_area.setWidget(self.container_widget)
 

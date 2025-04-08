@@ -11,7 +11,7 @@ class MainWindow(QWidget):
     
     def handle_sig_one(self):
         x = self.frame1.selectedMonitor;
-        print(x);
+        self.handle_signal(x)
     def handle_signal(self, resource = "cpu_percent"):
         self.frame2.set_resource(resource) # set resource to be displayed
         self.layout.setCurrentIndex( not self.layout.currentIndex() ) # toggle between 0 and 1
