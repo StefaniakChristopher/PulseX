@@ -124,7 +124,7 @@ class Title(QtWidgets.QWidget):
             "cpu_percent": "CPU",
             "memory_mb": "RAM",
             "disk_read_speed_mb_s": "DISK READ",
-            "disk_write_mb": "DISK WRITE"
+            "disk_write_speed_mb_s": "DISK WRITE"
         }
         self.text.setText(resource_names[current_resource])
 

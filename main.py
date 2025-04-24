@@ -3,8 +3,13 @@ import time
 import frame1
 import frame2
 import usage
+import total_usage
 import concurrent.futures
 import random
+
+system_data=[];
+play = True
+collect_data = True
 
 class MainWindow(QWidget):
 
@@ -41,7 +46,7 @@ class MainWindow(QWidget):
 	
         print("check 3");
         # init widgets
-        self.frame1 = frame1.MainWidget(proccess_array)
+        self.frame1 = frame1.MainWidget()
         self.frame2 = frame2.MainWidget()
         print("check 4");
         # connect signals
@@ -69,12 +74,18 @@ def data_thread():
         time.sleep(2)
         frame2.add_data(usage.get_usages(frame2.data_targets))
 
+def data_thread_overview():
+    while frame1.collect_data_overview:
+        print('data collected for frame 1');
+        time.sleep(2)
+        frame1.add_data_overview(total_usage.get_system_usage())
 
 def init_threads():
     with concurrent.futures.ThreadPoolExecutor() as executor:
             # Submit the function to the executor
             future = executor.submit(data_thread)
             executor.submit(gui_thread)
+            executor.submit(data_thread_overview);
             future.result()
 
 
